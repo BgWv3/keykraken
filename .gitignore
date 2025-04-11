@@ -78,3 +78,7 @@ coverage/
 # Mac and Linux trash
 .DS_Store
 Thumbs.db
+
+# scenarios and test data
+/scenarios
+/test_data
