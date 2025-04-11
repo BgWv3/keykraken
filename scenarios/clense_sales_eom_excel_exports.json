@@ -1,0 +1,98 @@
+{
+    "version": "1.1",
+    "name": "clense_sales_eom_excel_exports",
+    "steps": [
+        {
+            "name": "Select Window",
+            "type": "click",
+            "value": "[585, 16]",
+            "delay": 0.5
+        },
+        {
+            "name": "Page Layout",
+            "type": "click",
+            "value": "[218, 67]",
+            "delay": 0.5
+        },
+        {
+            "name": "Margins",
+            "type": "click",
+            "value": "[194, 138]",
+            "delay": 0.5
+        },
+        {
+            "name": "Narrow",
+            "type": "click",
+            "value": "[254, 359]",
+            "delay": 1.0
+        },
+        {
+            "name": "Orientation",
+            "type": "click",
+            "value": "[247, 141]",
+            "delay": 0.5
+        },
+        {
+            "name": "Landscape",
+            "type": "click",
+            "value": "[286, 233]",
+            "delay": 1.0
+        },
+        {
+            "name": "Print Titles",
+            "type": "click",
+            "value": "[508, 98]",
+            "delay": 1.0
+        },
+        {
+            "name": "Tab",
+            "type": "press",
+            "value": "Tab",
+            "delay": 0.5
+        },
+        {
+            "name": "Tab",
+            "type": "press",
+            "value": "Tab",
+            "delay": 0.5
+        },
+        {
+            "name": "$7:$7",
+            "type": "typewrite",
+            "value": "$7:$7",
+            "delay": 0.5,
+            "interval": 0.01
+        },
+        {
+            "name": "OK",
+            "type": "click",
+            "value": "[1103, 687]",
+            "delay": 0.5
+        },
+        {
+            "name": "Width",
+            "type": "click",
+            "value": "[685, 92]",
+            "delay": 0.5
+        },
+        {
+            "name": "1 Page",
+            "type": "click",
+            "value": "[666, 140]",
+            "delay": 1.0
+        },
+        {
+            "name": "Highlight Column C",
+            "type": "click",
+            "value": "[557, 226]",
+            "delay": 0.5
+        },
+        {
+            "name": "Hide Column",
+            "type": "hotkey",
+            "value": "ctrl, -",
+            "delay": 0.5
+        }
+    ],
+    "saved_at": "2025-04-07 11:46:59"
+}

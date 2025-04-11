@@ -1,0 +1,459 @@
+venvimport tkinter as tk
+from tkinter import ttk, filedialog, messagebox, simpledialog
+import pyautogui
+import json
+import os
+import time
+import threading
+from pynput import mouse
+
+# --- Constants ---
+SCENARIO_FOLDER = "scenarios"
+DEFAULT_DELAY = 0.5 # Default delay in seconds before each action
+DEFAULT_CONFIDENCE = 0.9 # Default confidence for image recognition
+
+# --- Global Variables ---
+recording_active = False
+listener_thread = None
+recorded_steps = []
+execution_thread = None
+stop_execution_flag = False
+root = None # Will hold the main Tkinter window
+
+# --- Utility Functions ---
+def create_scenario_folder():
+    """Creates the scenario folder if it doesn't exist."""
+    if not os.path.exists(SCENARIO_FOLDER):
+        try:
+            os.makedirs(SCENARIO_FOLDER)
+            print(f"Created folder: {SCENARIO_FOLDER}")
+        except OSError as e:
+            messagebox.showerror("Error", f"Could not create scenario folder: {e}")
+            return False
+    return True
+
+def validate_float(action, index, value_if_allowed,
+                   prior_value, text, validation_type, trigger_type, widget_name):
+    """Validation function for Entry widgets accepting floats."""
+    if text == "" or text == ".":
+        return True
+    try:
+        float(text)
+        return True
+    except ValueError:
+        return False
+
+# --- Recording Logic ---
+def on_click(x, y, button, pressed):
+    """Callback function for mouse listener."""
+    global recorded_steps, recording_active
+    if pressed and recording_active and button == mouse.Button.left:
+        coords = (int(x), int(y))
+        print(f"Recorded click at: {coords}")
+        recorded_steps.append({"type": "click", "value": list(coords), "delay": DEFAULT_DELAY})
+        update_treeview() # Update GUI in main thread
+
+def start_recording_thread():
+    """Starts the mouse listener in a separate thread."""
+    global listener_thread, recorded_steps, recording_active
+    if recording_active:
+        messagebox.showwarning("Recording", "Already recording.")
+        return
+
+    recorded_steps = [] # Clear previous recording
+    update_treeview()   # Clear the view
+    recording_active = True
+    status_label.config(text="Status: Recording... (Left-click to record, use Stop button)")
+    record_button.config(state=tk.DISABLED)
+    stop_record_button.config(state=tk.NORMAL)
+
+    # Define the listener function to run in the thread
+    def listener_func():
+        # Using 'with' ensures the listener stops properly
+        with mouse.Listener(on_click=on_click) as listener:
+            listener.join() # Blocks until listener.stop() is called
+
+    # Start the listener in a non-daemon thread
+    listener_thread = threading.Thread(target=listener_func, daemon=True)
+    listener_thread.start()
+    print("Listener thread started.")
+
+
+def stop_recording():
+    """Stops the mouse listener."""
+    global recording_active, listener_thread
+    if not recording_active:
+        return
+
+    recording_active = False
+    # Attempt to stop the listener - pynput's stop needs to be called from another thread
+    # or using a mechanism like raising an exception within the callback.
+    # A simpler approach for this GUI is just setting the flag and letting the thread exit
+    # gracefully when the program closes, or relying on the 'with' statement's cleanup
+    # if we can structure it that way. Since we used daemon=True, it will exit with the main app.
+    # For explicit stopping, mouse.Listener.stop() is needed.
+    # Let's just update the GUI state here.
+    print("Stopping listener...")
+    status_label.config(text="Status: Recording stopped.")
+    record_button.config(state=tk.NORMAL)
+    stop_record_button.config(state=tk.DISABLED)
+    messagebox.showinfo("Recording", f"Recording stopped. {len(recorded_steps)} steps recorded.")
+    update_treeview()
+
+
+# --- Scenario Execution Logic ---
+def run_scenario():
+    """Starts the automation sequence in a separate thread."""
+    global execution_thread, stop_execution_flag, root
+
+    if execution_thread and execution_thread.is_alive():
+        messagebox.showwarning("Busy", "Another scenario is already running.")
+        return
+
+    steps = get_steps_from_treeview()
+    if not steps:
+        messagebox.showwarning("Empty Scenario", "No steps to execute.")
+        return
+
+    try:
+        loops = int(loop_entry.get())
+        if loops <= 0:
+            raise ValueError("Loops must be positive.")
+    except ValueError:
+        messagebox.showerror("Invalid Input", "Please enter a valid positive integer for loops.")
+        return
+
+    stop_execution_flag = False
+    run_button.config(state=tk.DISABLED)
+    stop_run_button.config(state=tk.NORMAL)
+    progress_bar['maximum'] = len(steps) * loops
+    progress_bar['value'] = 0
+
+    # Create and start the execution thread
+    execution_thread = threading.Thread(target=_automation_thread_func, args=(steps, loops), daemon=True)
+    execution_thread.start()
+
+def _automation_thread_func(steps, loops):
+    """The function that runs the automation steps (executed in a separate thread)."""
+    global stop_execution_flag, root
+    total_steps_executed = 0
+
+    try:
+        for i in range(loops):
+            if stop_execution_flag:
+                print("Execution stopped by user (loop level).")
+                root.after(0, update_status, f"Status: Stopped by user during loop {i+1}/{loops}")
+                break
+            root.after(0, update_status, f"Status: Running loop {i+1}/{loops}...")
+
+            for j, step in enumerate(steps):
+                if stop_execution_flag:
+                    print("Execution stopped by user (step level).")
+                    root.after(0, update_status, f"Status: Stopped by user at step {j+1}")
+                    break # Break inner loop
+
+                step_description = f"{step.get('type', 'N/A')}: {step.get('value', 'N/A')}"
+                root.after(0, update_status, f"Status: Loop {i+1}/{loops}, Step {j+1}/{len(steps)} ({step_description})")
+
+                # 1. Apply Delay (if any)
+                delay = float(step.get('delay', 0.0))
+                if delay > 0:
+                    print(f"  Delaying for {delay} seconds...")
+                    time.sleep(delay) # Can be interrupted by flag check? Not directly with time.sleep
+
+                    # Check flag again after sleep, before action
+                    if stop_execution_flag:
+                        print("Execution stopped by user (after delay).")
+                        root.after(0, update_status, f"Status: Stopped by user after delay at step {j+1}")
+                        break
+
+
+                # 2. Perform Action
+                action_type = step.get("type")
+                action_value = step.get("value")
+                print(f"  Executing step {j+1}: Type={action_type}, Value={action_value}")
+
+                try:
+                    if action_type == "click":
+                        coords = action_value
+                        if isinstance(coords, list) and len(coords) == 2:
+                             # Add small pause before click sometimes helps reliability
+                            time.sleep(0.1)
+                            pyautogui.click(x=coords[0], y=coords[1])
+                        else:
+                             print(f"    WARNING: Invalid coordinates for click: {coords}")
+                             root.after(0, update_status, f"Status: WARNING - Invalid coords step {j+1}")
+
+
+                    elif action_type == "image":
+                        image_path = action_value
+                        confidence = float(step.get('confidence', DEFAULT_CONFIDENCE))
+                         # Add small pause before search sometimes helps reliability
+                        time.sleep(0.1)
+                        try:
+                            # Construct full path if relative
+                            if not os.path.isabs(image_path) and os.path.exists(os.path.join(SCENARIO_FOLDER, image_path)):
+                                image_path = os.path.join(SCENARIO_FOLDER, image_path)
+                            elif not os.path.exists(image_path):
+                                raise FileNotFoundError(f"Image not found at {image_path}")
+
+                            print(f"    Searching for image: {image_path} with confidence {confidence}")
+                            location = pyautogui.locateCenterOnScreen(image_path, confidence=confidence)
+                            if location:
+                                print(f"    Image found at: {location}")
+                                pyautogui.click(location)
+                            else:
+                                print(f"    WARNING: Image not found on screen: {image_path}")
+                                root.after(0, update_status, f"Status: WARNING - Image not found step {j+1}")
+                                # Option: Should we stop execution if image not found?
+                                # stop_execution_flag = True # Uncomment to stop on fail
+                        except pyautogui.ImageNotFoundException:
+                            print(f"    ERROR: Image file not found or invalid: {image_path}")
+                            root.after(0, update_status, f"Status: ERROR - Image file missing step {j+1}")
+                            stop_execution_flag = True # Stop on critical error
+                        except FileNotFoundError as fnf_err:
+                            print(f"    ERROR: {fnf_err}")
+                            root.after(0, update_status, f"Status: ERROR - Image file missing step {j+1}")
+                            stop_execution_flag = True # Stop on critical error
+                        except Exception as img_err: # Catch other potential pyautogui errors
+                            print(f"    ERROR during image search/click: {img_err}")
+                            root.after(0, update_status, f"Status: ERROR during image step {j+1}")
+                            stop_execution_flag = True # Stop on critical error
+
+                    else:
+                        print(f"    WARNING: Unknown step type: {action_type}")
+                        root.after(0, update_status, f"Status: WARNING - Unknown step type {j+1}")
+
+                except Exception as e:
+                    print(f"  ERROR executing step {j+1}: {e}")
+                    # Use root.after to safely update GUI from thread
+                    root.after(0, update_status, f"Status: ERROR at step {j+1} - {e}")
+                    stop_execution_flag = True # Stop execution on error
+
+                # Update progress bar (safely via root.after)
+                total_steps_executed += 1
+                root.after(0, progress_bar.config, {'value': total_steps_executed})
+                root.after(0, root.update_idletasks) # Force GUI update
+
+            if stop_execution_flag: # Check if inner loop was stopped
+                 break # Break outer loop too
+
+        # Finished naturally or stopped
+        if not stop_execution_flag:
+            final_status = "Status: Scenario completed successfully."
+            print(final_status)
+            root.after(0, update_status, final_status)
+            root.after(0, messagebox.showinfo, "Complete", "Scenario execution finished.") # Show popup from main thread
+        else:
+             print("Execution was stopped.")
+             # Status already updated where stop occurred
+
+    except Exception as e:
+        # Catch errors in the loop setup or major issues
+        print(f"FATAL ERROR during scenario execution: {e}")
+        root.after(0, update_status, f"Status: FATAL ERROR - {e}")
+        root.after(0, messagebox.showerror, "Execution Error", f"An unexpected error occurred: {e}")
+
+    finally:
+        # Ensure buttons are re-enabled and progress reset in the main thread
+        root.after(0, _reset_execution_controls)
+
+def update_status(message):
+    """Safely updates the status label from any thread."""
+    status_label.config(text=message)
+
+def _reset_execution_controls():
+    """Resets execution buttons and progress bar."""
+    run_button.config(state=tk.NORMAL)
+    stop_run_button.config(state=tk.DISABLED)
+    progress_bar['value'] = 0
+    # Don't clear status label here, it shows the final result/error
+
+def stop_execution():
+    """Sets the flag to stop the automation thread."""
+    global stop_execution_flag
+    if execution_thread and execution_thread.is_alive():
+        print("Stop signal sent to execution thread.")
+        stop_execution_flag = True
+        stop_run_button.config(state=tk.DISABLED) # Prevent multiple clicks
+        update_status("Status: Stopping...")
+    else:
+        print("No execution thread running to stop.")
+
+
+# --- GUI Functions ---
+def setup_gui(app_root):
+    """Creates and arranges the Tkinter widgets."""
+    global root
+    root = app_root
+    root.title("PyAutoClicker GUI")
+    # Make window resizable (optional)
+    # root.columnconfigure(0, weight=1)
+    # root.rowconfigure(1, weight=1) # Make treeview area expand
+
+    # Validation command for float entries
+    vcmd_float = (root.register(validate_float),
+              '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+
+    # --- Frames ---
+    control_frame = ttk.Frame(root, padding="10")
+    control_frame.grid(row=0, column=0, sticky="ew")
+
+    tree_frame = ttk.Frame(root, padding="10")
+    tree_frame.grid(row=1, column=0, sticky="nsew")
+    tree_frame.columnconfigure(0, weight=1)
+    tree_frame.rowconfigure(0, weight=1)
+
+    edit_frame = ttk.Frame(root, padding="10")
+    edit_frame.grid(row=2, column=0, sticky="ew")
+
+    run_frame = ttk.Frame(root, padding="10")
+    run_frame.grid(row=3, column=0, sticky="ew")
+
+    # Make the row containing the treeview expand vertically
+    root.grid_rowconfigure(1, weight=1)
+    # Make the main column expand horizontally
+    root.grid_columnconfigure(0, weight=1)
+
+
+    # --- Control Frame Widgets ---
+    ttk.Button(control_frame, text="New Scenario", command=new_scenario).pack(side=tk.LEFT, padx=5)
+    ttk.Button(control_frame, text="Load Scenario", command=load_scenario).pack(side=tk.LEFT, padx=5)
+    ttk.Button(control_frame, text="Save Scenario", command=save_scenario).pack(side=tk.LEFT, padx=5)
+
+    global record_button, stop_record_button
+    record_button = ttk.Button(control_frame, text="Start Recording", command=start_recording_thread)
+    record_button.pack(side=tk.LEFT, padx=15)
+    stop_record_button = ttk.Button(control_frame, text="Stop Recording", command=stop_recording, state=tk.DISABLED)
+    stop_record_button.pack(side=tk.LEFT, padx=5)
+
+
+    # --- Treeview Frame Widgets (Scenario Steps) ---
+    global tree
+    columns = ("#", "Type", "Value", "Delay (s)")
+    tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
+    tree.heading("#", text="#")
+    tree.heading("Type", text="Action Type")
+    tree.heading("Value", text="Value (Coords/Image Path)")
+    tree.heading("Delay (s)", text="Delay Before (s)")
+
+    tree.column("#", width=40, stretch=tk.NO, anchor=tk.CENTER)
+    tree.column("Type", width=80, stretch=tk.NO)
+    tree.column("Value", width=250)
+    tree.column("Delay (s)", width=100, stretch=tk.NO, anchor=tk.E)
+
+    # Scrollbars for Treeview
+    vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+    tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+    tree.grid(row=0, column=0, sticky="nsew")
+    vsb.grid(row=0, column=1, sticky="ns")
+    hsb.grid(row=1, column=0, sticky="ew")
+
+    # Bind selection event to update edit fields
+    tree.bind('<<TreeviewSelect>>', on_tree_select)
+
+    # --- Edit Frame Widgets ---
+    ttk.Label(edit_frame, text="Selected Step:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+    global step_index_label, step_type_label, step_value_entry, step_delay_entry
+    step_index_label = ttk.Label(edit_frame, text="#N/A")
+    step_index_label.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+
+    step_type_label = ttk.Label(edit_frame, text="Type: N/A")
+    step_type_label.grid(row=0, column=2, padx=15, pady=5, sticky=tk.W)
+
+    ttk.Label(edit_frame, text="Value:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+    step_value_entry = ttk.Entry(edit_frame, width=40)
+    step_value_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=5, sticky=tk.EW)
+    browse_button = ttk.Button(edit_frame, text="...", width=3, command=browse_for_image_value) # Button to browse for image
+    browse_button.grid(row=1, column=3, padx=2)
+
+
+    ttk.Label(edit_frame, text="Delay (s):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+    step_delay_entry = ttk.Entry(edit_frame, width=10, validate="key", validatecommand=vcmd_float)
+    step_delay_entry.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+
+    update_button = ttk.Button(edit_frame, text="Update Step", command=update_selected_step)
+    update_button.grid(row=1, column=4, rowspan=2, padx=10, pady=5, sticky=tk.NS)
+
+    add_image_button = ttk.Button(edit_frame, text="Add Image Step", command=add_image_step_manually)
+    add_image_button.grid(row=1, column=5, rowspan=2, padx=10, pady=5, sticky=tk.NS)
+
+    remove_button = ttk.Button(edit_frame, text="Remove Step", command=remove_selected_step)
+    remove_button.grid(row=1, column=6, rowspan=2, padx=5, pady=5, sticky=tk.NS)
+
+    edit_frame.columnconfigure(1, weight=1) # Make value entry expand
+
+
+    # --- Run Frame Widgets ---
+    ttk.Label(run_frame, text="Loops:").pack(side=tk.LEFT, padx=5)
+    global loop_entry
+    loop_entry = ttk.Entry(run_frame, width=5)
+    loop_entry.insert(0, "1")
+    loop_entry.pack(side=tk.LEFT, padx=5)
+
+    global run_button, stop_run_button
+    run_button = ttk.Button(run_frame, text="Run Scenario", command=run_scenario)
+    run_button.pack(side=tk.LEFT, padx=15)
+    stop_run_button = ttk.Button(run_frame, text="Stop Execution", command=stop_execution, state=tk.DISABLED)
+    stop_run_button.pack(side=tk.LEFT, padx=5)
+
+    # --- Status Bar ---
+    global status_label, progress_bar
+    status_frame = ttk.Frame(root, padding=(5, 2))
+    status_frame.grid(row=4, column=0, sticky="ew")
+
+    status_label = ttk.Label(status_frame, text="Status: Ready", relief=tk.SUNKEN, anchor=tk.W)
+    status_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+
+    progress_bar = ttk.Progressbar(status_frame, orient=tk.HORIZONTAL, length=150, mode='determinate')
+    progress_bar.pack(side=tk.RIGHT, padx=2)
+
+
+def clear_edit_fields():
+    """Clears the fields used for editing a selected step."""
+    step_index_label.config(text="#N/A")
+    step_type_label.config(text="Type: N/A")
+    step_value_entry.delete(0, tk.END)
+    step_delay_entry.delete(0, tk.END)
+
+def on_tree_select(event):
+    """Handles row selection in the Treeview to populate edit fields."""
+    selected_items = tree.selection()
+    if not selected_items:
+        clear_edit_fields()
+        return
+
+    item_id = selected_items[0] # Get the first selected item ID
+    item_data = tree.item(item_id, 'values') # Get tuple of cell values
+
+    if not item_data or len(item_data) < 4:
+        clear_edit_fields()
+        return
+
+    step_num, step_type, step_value_str, step_delay = item_data
+
+    step_index_label.config(text=f"#{step_num}")
+    step_type_label.config(text=f"Type: {step_type}")
+
+    step_value_entry.delete(0, tk.END)
+    step_value_entry.insert(0, step_value_str)
+
+    step_delay_entry.delete(0, tk.END)
+    step_delay_entry.insert(0, step_delay)
+
+def update_selected_step():
+    """Updates the data of the selected step in the Treeview."""
+    selected_items = tree.selection()
+    if not selected_items:
+        messagebox.showwarning("No Selection", "Please select a step in the table to update.")
+        return
+
+    item_id = selected_items[0]
+    item_index = tree.index(item_id) # Get the 0-based index
+
+    try:
+        new_delay_str = step_delay_entry.get()
+        new_delay = float(new_delay_s

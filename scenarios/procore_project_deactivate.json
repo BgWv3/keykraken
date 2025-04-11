@@ -1,0 +1,99 @@
+{
+    "version": "1.1",
+    "name": "procore_project_deactivate",
+    "steps": [
+        {
+            "name": "Select top project",
+            "type": "click",
+            "value": "[128, 385]",
+            "delay": 0.5
+        },
+        {
+            "name": "Refresh to ensure page load",
+            "type": "press",
+            "value": "f5",
+            "delay": 3.0
+        },
+        {
+            "name": "Click admin button",
+            "type": "image",
+            "value": "procore_admin_btn.png",
+            "delay": 3.0,
+            "confidence": 0.8
+        },
+        {
+            "name": "Deactivate project",
+            "type": "click",
+            "value": "[862, 309]",
+            "delay": 5.0
+        },
+        {
+            "name": "Select total value",
+            "type": "click",
+            "value": "[168, 394]",
+            "delay": 0.5
+        },
+        {
+            "name": "Highlight total value",
+            "type": "click",
+            "value": "[168, 394]",
+            "delay": 0.2
+        },
+        {
+            "name": "Enter $1",
+            "type": "typewrite",
+            "value": "1",
+            "delay": 0.5,
+            "interval": 0.01
+        },
+        {
+            "name": "Press enter",
+            "type": "press",
+            "value": "enter",
+            "delay": 0.5
+        },
+        {
+            "name": "Select start date",
+            "type": "click",
+            "value": "[607, 392]",
+            "delay": 0.5
+        },
+        {
+            "name": "Update start date",
+            "type": "click",
+            "value": "[543, 532]",
+            "delay": 0.5
+        },
+        {
+            "name": "Select completion date",
+            "type": "click",
+            "value": "[295, 474]",
+            "delay": 0.5
+        },
+        {
+            "name": "Update completion date",
+            "type": "click",
+            "value": "[334, 604]",
+            "delay": 0.5
+        },
+        {
+            "name": "Update",
+            "type": "click",
+            "value": "[1561, 1006]",
+            "delay": 0.5
+        },
+        {
+            "name": "Back home",
+            "type": "click",
+            "value": "[64, 99]",
+            "delay": 1.0
+        },
+        {
+            "name": "time_delay",
+            "type": "delay",
+            "value": "3",
+            "delay": 3.0
+        }
+    ],
+    "saved_at": "2025-04-07 10:00:42"
+}
