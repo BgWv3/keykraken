@@ -118,6 +118,7 @@ def capture_screen_region():
 
 def capture_scroll_action():
     """Capture cumulative scroll amount by listening to mouse scroll events until the user presses a Stop button."""
+    global stop_flag, scroll_data
     scroll_data = {"total_scroll": 0}
     stop_flag = {"stop": False}
 
@@ -132,29 +133,27 @@ def capture_scroll_action():
                 time.sleep(0.1)  # Keep the thread alive
             mouse_listener.stop()  # Stop the mouse listener
 
-    def stop_scroll_listener():
-        """Stop the scroll listener and finalize the scroll value."""
-        stop_flag["stop"] = True
-        finalize_scroll()
-
-    def finalize_scroll():
-        """Finalize the scroll value and update the input field."""
-        root.after(0, lambda: step_value_entry.delete(0, tk.END))  # Clear the entry field
-        root.after(0, lambda: step_value_entry.insert(0, str(scroll_data["total_scroll"])))  # Insert the total scroll value
-        stop_button.destroy()  # Remove the Stop button
-
-    # Create a new frame for the Stop button
-    stop_button_frame = ttk.Frame(root)
-    stop_button_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
-
-    # Add the Stop button to the new frame using grid
-    stop_button = ttk.Button(stop_button_frame, text="Stop Scroll", command=stop_scroll_listener)
-    stop_button.grid(row=0, column=0, padx=5, pady=5)
+    # Update button states
+    start_scroll_button.config(state=tk.DISABLED)
+    stop_scroll_button.config(state=tk.NORMAL)
 
     # Start the scroll listener in a separate thread
     threading.Thread(target=start_scroll_listener, daemon=True).start()
 
     messagebox.showinfo("Capture Scroll", "Scroll up or down to capture the scroll amount. Click 'Stop Scroll' to finish.")
+
+def stop_scroll_listener():
+    """Stop the scroll listener and finalize the scroll value."""
+    global stop_flag, scroll_data, stop_scroll_button, start_scroll_button
+    stop_flag["stop"] = True
+    finalize_scroll()
+
+def finalize_scroll():
+    """Finalize the scroll value and update the input field."""
+    root.after(0, lambda: step_value_entry.delete(0, tk.END))  # Clear the entry field
+    root.after(0, lambda: step_value_entry.insert(0, str(scroll_data["total_scroll"])))  # Insert the total scroll value
+    stop_scroll_button.config(state=tk.DISABLED)  # Disable the Stop Scroll button
+    start_scroll_button.config(state=tk.NORMAL)  # Re-enable the Start Scroll button
 
 def capture_drag_action():
     """Capture drag start and end coordinates by listening to mouse events in a separate thread."""
@@ -314,13 +313,15 @@ def _automation_thread_func(steps, loops):
                 root.after(0, update_status, f"Status: Loop {current_loop}/{loops}, Step {current_step_index}/{len(steps)} ({step_name})")
                 root.after(0, highlight_step, j)  # Highlight current step
 
-                # 1. Delay
+                # 1. Delay with Countdown Timer
                 delay = float(step.get('delay', 0.0))
                 start_time = time.time()
                 while time.time() - start_time < delay:
                     if stop_execution_flag:
                         break
-                    time.sleep(0.05)
+                    remaining_time = delay - (time.time() - start_time)
+                    root.after(0, update_status, f"Status: Loop {current_loop}/{loops}, Step {current_step_index}/{len(steps)} ({step_name}) - Waiting {remaining_time:.1f}s")
+                    time.sleep(0.1)  # Update every 0.1 seconds
                 if stop_execution_flag:
                     break
 
@@ -469,11 +470,20 @@ def setup_gui(app_root):
     global run_button, stop_run_button
     global step_name_entry, step_type_combobox, step_value_entry, step_delay_entry, value_hint_label
     global click_button_var, left_click_radio, right_click_radio, click_options_frame
-    global description_text  # Add global variable for the description widget
+    global description_text, start_scroll_button, stop_scroll_button  # Add global variables for scroll buttons
 
     root = app_root
     root.title(f"KeyKraken v{APP_VERSION}")
     root.geometry("1250x750")  # Adjusted size to accommodate the description window
+
+    # Create a ttk.Style object
+    style = ttk.Style()
+
+    # Define a custom style for buttons
+    style.configure("Custom.TButton", background="#4CAF50", foreground="white", font=("Arial", 10, "bold"))
+    style.map("Custom.TButton",
+              background=[("active", "#45a049")],  # Change color when the button is active
+              foreground=[("disabled", "gray")])  # Change text color when disabled
 
     # Set custom icon
     try:
@@ -550,11 +560,26 @@ def setup_gui(app_root):
 
     ttk.Button(move_button_frame, text="▲", width=5, command=move_step_up).pack(pady=5, padx=2)
     ttk.Button(move_button_frame, text="▼", width=5, command=move_step_down).pack(pady=5, padx=2)
-    
+    ttk.Separator(move_button_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=5, pady=5)
     # Add/Edit/Remove Buttons
     ttk.Button(move_button_frame, text="Add Step", command=add_new_step).pack(pady=5, padx=2)
     ttk.Button(move_button_frame, text="Update Step", command=update_selected_step).pack(pady=5, padx=2)
     ttk.Button(move_button_frame, text="Remove Step", command=remove_selected_step).pack(pady=5, padx=2)
+    ttk.Separator(move_button_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=5, pady=5)
+    # Scroll Calculator Buttons
+    start_scroll_button = ttk.Button(move_button_frame, text="Start Scroll", command=capture_scroll_action, state=tk.DISABLED)
+    start_scroll_button.pack(pady=5, padx=2)
+    stop_scroll_button = ttk.Button(move_button_frame, text="Stop Scroll", command=stop_scroll_listener, state=tk.DISABLED)
+    stop_scroll_button.pack(pady=5, padx=2)
+    ttk.Separator(move_button_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, padx=5, pady=5)
+    # Click Options Buttons
+    click_button_var = tk.StringVar(value="left")
+    left_click_radio = ttk.Radiobutton(move_button_frame, text="Left Click", variable=click_button_var, value="left", state=tk.DISABLED)
+    left_click_radio.pack(pady=5, padx=2)
+
+    right_click_radio = ttk.Radiobutton(move_button_frame, text="Right Click", variable=click_button_var, value="right", state=tk.DISABLED)
+    right_click_radio.pack(pady=5, padx=2)
+
 
     # --- Edit Frame Widgets ---
     ttk.Label(edit_frame, text="Step Name:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
@@ -582,14 +607,7 @@ def setup_gui(app_root):
     ttk.Label(edit_frame, text="Loops:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=2)
     loop_entry = ttk.Entry(edit_frame, validate="key", validatecommand=vcmd_int, width=10)
     loop_entry.grid(row=5, column=1, sticky=tk.W, padx=5, pady=2)
-
-    # --- Click Options ---
-    click_button_var = tk.StringVar(value="left")
-    click_options_frame = ttk.Frame(edit_frame)
-    left_click_radio = ttk.Radiobutton(click_options_frame, text="Left Click", variable=click_button_var, value="left")
-    right_click_radio = ttk.Radiobutton(click_options_frame, text="Right Click", variable=click_button_var, value="right")
-    left_click_radio.grid(row=7, column=0, padx=5, pady=2)
-    right_click_radio.grid(row=8, column=0, padx=5, pady=2)
+    loop_entry.insert(0, "1")  # Default to 1 loop
 
     # --- Description Frame ---
     ttk.Label(description_frame, text="Scenario Description:").pack(anchor=tk.W, padx=5, pady=(0, 5))
@@ -616,19 +634,27 @@ def on_action_type_change(event=None):
     action_type = step_type_combobox.get()
     update_value_hint(action_type)
 
-    # Show/hide click options
-    if action_type == "click":
-        # Place the click options frame dynamically
-        click_options_frame.grid(row=2, column=2, columnspan=2, padx=5, pady=0, sticky=tk.W)
+    # Enable/disable scroll buttons
+    if action_type == "scroll":
+        start_scroll_button.config(state=tk.NORMAL)
+        stop_scroll_button.config(state=tk.DISABLED)
     else:
-        # Remove the click options frame from the grid
-        click_options_frame.grid_remove()
+        start_scroll_button.config(state=tk.DISABLED)
+        stop_scroll_button.config(state=tk.DISABLED)
+
+    # Enable/disable click options
+    if action_type == "click":
+        left_click_radio.config(state=tk.NORMAL)
+        right_click_radio.config(state=tk.NORMAL)
+    else:
+        left_click_radio.config(state=tk.DISABLED)
+        right_click_radio.config(state=tk.DISABLED)
 
 def update_value_hint(action_type):
     """Updates the hint label based on the selected action type."""
     hint = "Hint: "
     if action_type == "click":
-        hint += "Enter coordinates e.g., [100, 200] or 100, 200. Select button below."
+        hint += "Enter coordinates e.g., [100, 200] or 'Record Clicks'."
     elif action_type == "image":
         hint += "Capture a region of the screen or select an image file."
     elif action_type == "typewrite":

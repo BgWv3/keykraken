@@ -1,5 +1,7 @@
 # KeyKraken v1.2
 
+<img src="images/keykraken_header.png" height="150">
+
 **A Cross-Platform GUI Automation Tool**
 
 KeyKraken is a Python-based application designed to simplify and automate repetitive graphical user interface (GUI) tasks on your computer. It allows users to record mouse clicks, manually define a sequence of actions (including keyboard inputs, image searches, scrolling, and more), save these sequences as reusable scenarios, and execute them on demand.
