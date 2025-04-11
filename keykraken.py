@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox, simpledialog, PhotoImage
 import pyautogui
 from PIL import ImageGrab
 import json
@@ -472,8 +472,16 @@ def setup_gui(app_root):
     global description_text  # Add global variable for the description widget
 
     root = app_root
-    root.title(f"NeoClick v{APP_VERSION}")
+    root.title(f"KeyKraken v{APP_VERSION}")
     root.geometry("1250x750")  # Adjusted size to accommodate the description window
+
+    # Set custom icon
+    try:
+        icon_path = os.path.join("images", "icon.png")
+        app_icon = PhotoImage(file=icon_path)
+        root.iconphoto(True, app_icon)
+    except Exception as e:
+        print(f"Error loading icon: {e}")
 
     vcmd_float = (root.register(validate_float), '%P')
     vcmd_int = (root.register(validate_int), '%P')

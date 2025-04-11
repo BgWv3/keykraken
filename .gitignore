@@ -80,5 +80,5 @@ coverage/
 Thumbs.db
 
 # scenarios and test data
-/scenarios
-/test_data
+scenarios/
+test_data/
