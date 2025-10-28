@@ -1,152 +1,295 @@
-# KeyKraken v1.2
+# KeyKraken 🐙
 
-<img src="images/keykraken_header.png" height="150">
+**KeyKraken** is a powerful, modern macro automation application built with Python and Qt. Create, record, and execute custom automation scenarios to streamline repetitive tasks.
 
-**A Cross-Platform GUI Automation Tool**
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![Python](https://img.shields.io/badge/python-3.8+-green)
+![License](https://img.shields.io/badge/license-MIT-orange)
 
-KeyKraken is a Python-based application designed to simplify and automate repetitive graphical user interface (GUI) tasks on your computer. It allows users to record mouse clicks, manually define a sequence of actions (including keyboard inputs, image searches, scrolling, and more), save these sequences as reusable scenarios, and execute them on demand.
+## Features
 
-## Key Features
+### 🎯 Core Functionality
+- **Visual Scenario Management**: Create, edit, and organize automation scenarios with an intuitive GUI
+- **Live Recording**: Record mouse clicks and keyboard inputs in real-time
+- **Manual Step Editing**: Fine-tune automation steps with precise control
+- **Multi-Iteration Support**: Run scenarios 1-1000 times automatically
+- **Multiple Action Types**: Support for clicks, typing, keypresses, scrolling, mouse movement, and delays
 
-* **Graphical User Interface:** Simple and intuitive interface built with Tkinter.
-* **Click Recording:** Record left and right mouse clicks to quickly capture basic interactions.
-* **Manual Step Creation:** Define complex automation sequences step-by-step, including:
-    * **Naming:** Give each step a descriptive name.
-    * **Action Types:** Choose from various actions:
-        * `click`: Left or right mouse clicks at specific coordinates.
-        * `image`: Find an image on the screen and click it (left-click).
-        * `typewrite`: Type text strings.
-        * `press`: Simulate pressing single keyboard keys (e.g., Enter, Ctrl, F1).
-        * `hotkey`: Simulate keyboard shortcuts (e.g., Ctrl+C, Alt+F4).
-        * `scroll`: Scroll the mouse wheel up or down by a specified amount.
-        * `drag`: Simulate dragging the mouse from one point to another.
-        * `delay`: Introduce explicit pauses within the sequence.
-    * **Value Input:** Enter coordinates, text, keys, image paths, or amounts specific to the action type.
-    * **Delay Control:** Set a delay (in seconds) *before* each step executes to accommodate load times.
-* **Image Recognition:** Uses `pyautogui` and `opencv-python` to locate and interact with elements based on image matching (useful for dynamic interfaces).
-* **Scenario Editing:**
-    * View steps in a clear table format.
-    * Select and modify any aspect of a step (name, type, value, delay, click button).
-    * Reorder steps easily using "Move Up" and "Move Down" buttons.
-* **Save & Load:**
-    * Save automation sequences (scenarios) as human-readable JSON files.
-    * Load previously saved scenarios for reuse.
-    * Scenarios are stored in a dedicated `scenarios` subfolder.
-* **Looping:** Execute scenarios multiple times by specifying the loop count.
-* **Execution Control:**
-    * Run the defined scenario.
-    * Stop execution mid-sequence.
-    * Visual progress bar and status updates during execution.
-    * Highlights the currently executing step in the table.
-* **Scroll Amount Calculator:** A built-in helper tool to detect scroll values reported by your system, aiding in setting correct scroll amounts.
-* **Cross-Platform:** Built with Python libraries compatible with Windows, macOS, and Linux (though specific OS behaviors might vary slightly).
-* **Basic Multi-Monitor Support:** Coordinates generally work across multiple monitors based on `pyautogui`'s virtual screen handling.
+### 🎨 Modern Interface
+- Clean Qt-based GUI with split-panel design
+- Real-time execution feedback and progress tracking
+- Step reordering with drag-free up/down controls
+- Status bar with live updates
+- Custom icons and splash screen support
 
-## Screenshots
-
-* **Captures:** Using the screen capture option in lieu of providing and image will require modifications. Captures are taken of the entire screen, then opened in the systems native image viewer, and will need to be cropped to the specified area to be clicked.
-
-## Requirements
-
-* **Python:** Version 3.7 or higher recommended.
-* **Libraries:**
-    * `pyautogui`: For core GUI automation (mouse, keyboard, screen).
-    * `pynput`: For reliable global mouse/keyboard event listening (recording, scroll testing).
-    * `Pillow`: Image handling library (dependency for `pyautogui`).
-    * `opencv-python`: Computer vision library used by `pyautogui` for image recognition confidence feature.
+### 🔒 Safety Features
+- PyAutoGUI failsafe (move mouse to corner to stop)
+- 3-second preparation countdown before execution
+- Manual stop capability during recording
+- Error handling and validation
 
 ## Installation
 
-### It's best practice to establish a virtual environment prior to installing requirements
+### Prerequisites
+- Python 3.8 or higher
+- pip package manager
 
-1.  **Clone or Download:** Get the KeyKraken script (`.py` file).
-2.  **Install Python:** Ensure you have a compatible Python version installed and added to your system's PATH.
-3.  **Install Libraries:** Open your terminal or command prompt and run:
-    ```bash
-    pip install requirements.txt
-    ```
+### Setup
 
-## Usage
+1. **Clone or download the repository**
+```bash
+git clone https://github.com/BgWv3/keykraken.git
+cd keykraken
+```
 
-1.  **Run the Application:**
-    ```bash
-    python keykraken.py
-    ```
-2.  **Main Window:** The main application window will appear.
-3.  **Recording Clicks:**
-    * Click "Record Clicks".
-    * The status bar will indicate recording is active.
-    * Perform left or right clicks on your screen where you want actions to occur. Each click adds a step to the table.
-    * Click "Stop Recording" when finished.
-4.  **Adding/Editing Steps Manually:**
-    * Use the "Edit Frame" section below the table.
-    * **To Add:** Fill in the "Step Name", select "Action Type", enter the "Action Value" (see format hints below), set the "Delay Before", choose "Left/Right Click" (if type is 'click'), and click "Add Step".
-    * **To Edit:** Click a row in the table. Its details will load into the edit fields. Modify the values and click "Update Step".
-    * **Clear Fields:** Click "Clear Fields" to reset the edit section.
-    * **Remove Step:** Select a step in the table and click "Remove Step".
-5.  **Reordering Steps:**
-    * Select a step in the table.
-    * Use the "▲ Up" and "▼ Down" buttons next to the table to change its position.
-6.  **Using "Calculate Scroll" Helper:**
-    * Select "scroll" as the "Action Type".
-    * Click the "Browse" button next to the "Value" input box.
-    * A notification will appear indicating to *Scroll up or down to capture the scroll amount. Click 'Stop Scroll' to finish*.
-    * Clicking "Ok" will make a "Stop Scroll" button appear.
-    * Scroll up or down to begin calculation.
-    * Clicking "Stop Scroll" will end the scroll calculation helper and add the calculated value to the "Value" input box.
-7.  **Saving a Scenario:**
-    * Click "Save".
-    * Choose a filename (e.g., `my_automation.json`) in the `scenarios` folder. The steps currently in the table will be saved.
-8.  **Loading a Scenario:**
-    * Click "Load".
-    * Select a previously saved `.json` file from the `scenarios` folder. The steps will load into the table, replacing any current steps.
-9.  **Running a Scenario:**
-    * Enter the desired number of repetitions in the "Loops" box.
-    * Click "Run Scenario".
-    * The application will execute the steps in order, pausing for the specified delay before each action. The progress bar and status label will update. The currently executing step will be highlighted.
-    * Click "Stop Execution" to interrupt the process.
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-## Action Types & Value Formats
+3. **Create required directories**
+```bash
+mkdir scenarios
+mkdir images
+```
 
-| Action Type | Required Value Format                                        | Description                                                                 |
-| :---------- | :--------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| `click`     | Coordinates: `[X, Y]` or `X, Y`                            | Performs a mouse click (Left or Right, chosen in GUI) at the coordinates. |
-| `image`     | Image file path (e.g., `button.png`, `../images/login.png`) | Locates the image on screen and performs a Left click in its center.        |
-| `typewrite` | Text string (e.g., `Hello World!`)                         | Types the provided text using the keyboard.                                 |
-| `press`     | Single key name (e.g., `enter`, `ctrl`, `f1`, `a`)           | Simulates pressing and releasing a single keyboard key.                     |
-| `hotkey`    | Comma-separated keys (e.g., `ctrl,c`, `alt,f4`)             | Simulates pressing multiple keys simultaneously (a keyboard shortcut).      |
-| `scroll`    | Integer (e.g., `10`, `-5`, `120`)                          | Scrolls the mouse wheel (Positive=Up, Negative=Down). Use "Scroll Calculation".  |
-| `drag`      | Start/End Coords: `[X1,Y1];[X2,Y2]` or `X1,Y1;X2,Y2`        | Drags the mouse from the start coordinates to the end coordinates.          |
-| `delay`     | Number (float/int, e.g., `5.0`, `2`)                       | Pauses execution for the specified number of seconds.                       |
+4. **Add optional images** (for enhanced UI)
+   - Place `icon.png` in `images/` folder for app icon
+   - Place `keykraken_header_v2.png` in `images/` folder for splash screen
 
-* **Coordinates:** `X` and `Y` are pixel values relative to the primary monitor's top-left corner (0,0).
-* **Image Paths:** Relative paths (e.g., `my_button.png`) are recommended and are relative to the `scenarios` folder where KeyKraken looks for them by default. Absolute paths also work. Use clear, unique images cropped closely around the target element.
-* **Key Names:** Use lowercase key names defined by `pyautogui` (common ones include `enter`, `esc`, `f1` through `f12`, `left`, `right`, `up`, `down`, `ctrl`, `alt`, `shift`, `tab`, `space`, letters `a`-`z`, numbers `0`-`9`, etc.).
+5. **Run the application**
+```bash
+python keykraken.py
+```
 
-## Tips for Best Results
+## Quick Start Guide
 
-* **Use Adequate Delays:** Add sufficient delay before steps that interact with UI elements, especially after actions that trigger loading or animations. Start with larger delays (1-2 seconds) and reduce them carefully during testing.
-* **Image Clarity:** Use clear, unique screenshots for image recognition steps. Crop them closely around the target element. Avoid capturing the mouse cursor in the image.
-* **Screen Resolution:** Automation based on coordinates or images can break if the screen resolution, application window size, or UI layout changes significantly. Try to run automations under consistent screen conditions.
-* **Run as Administrator (If Needed):** On some operating systems (like Windows), you might need to run KeyKraken with administrator privileges to interact with certain applications or system dialogs.
-* **Target Application Focus:** Ensure the application you want to automate has focus before running steps like `typewrite` or `press`. You might need an initial `click` step to activate the target window.
+### Creating Your First Scenario
 
-## Known Limitations
+1. **Launch KeyKraken** and click "New Scenario"
+2. **Enter a name** for your scenario
+3. **Add a description** (optional but recommended)
+4. **Add steps** using one of two methods:
+   - **Manual**: Click "Add Step" and configure each action
+   - **Recording**: Click "🔴 Start Recording" and perform actions
 
-* **Sensitivity to UI Changes:** Scripts relying heavily on coordinates or images may fail if the target application's UI is updated or resized.
-* **Timing Issues:** The success of automation can depend on system performance and application responsiveness. Adjust delays as needed.
-* **Complex Interactions:** Simulating very complex drag-and-drop operations or interactions requiring precise timing might be challenging.
-* **Error Handling:** KeyKraken has basic error handling, but it may not gracefully handle every unexpected application state or popup window during execution. Execution will stop on most errors.
-* **Interrupting Actions:** Stopping execution might not immediately interrupt actions that take time (like `pyautogui.dragTo` or long `typewrite` calls).
+### Step Types
+
+| Type | Description | Example Use Case |
+|------|-------------|------------------|
+| **Click** | Mouse click at coordinates | Click buttons, select items |
+| **Type** | Type text string | Enter form data, fill fields |
+| **Keypress** | Single key press | Press Enter, Tab, Escape |
+| **Scroll** | Scroll up/down | Navigate long pages |
+| **Move** | Move mouse to position | Hover over elements |
+| **Delay** | Wait specified time | Allow page loads, timing |
+
+### Recording Macros
+
+1. Click **"🔴 Start Recording"**
+2. Perform your actions (mouse clicks and key presses)
+3. Click **"⏹️ Stop Recording"** when finished
+4. Review and edit recorded steps as needed
+5. Click **"💾 Save Scenario"**
+
+### Executing Scenarios
+
+1. **Load** a scenario from the left panel
+2. **Set iterations** (how many times to run)
+3. Click **"▶️ Execute Scenario"**
+4. **Position windows** during 3-second countdown
+5. Watch automated execution with real-time feedback
+
+### Editing Steps
+
+- **Add Step**: Insert new actions manually
+- **Edit Step**: Modify existing action details
+- **Delete Step**: Remove unwanted actions
+- **Move Up/Down**: Reorder steps for proper sequence
+
+## Scenario File Format
+
+Scenarios are stored as JSON files in the `scenarios/` directory:
+
+```json
+{
+    "version": "1.2",
+    "name": "example_scenario",
+    "description": "This is an example automation scenario",
+    "steps": [
+        {
+            "name": "Click Login Button",
+            "type": "click",
+            "value": [1310, 687],
+            "delay": 0.25,
+            "button": "left"
+        },
+        {
+            "name": "Type Username",
+            "type": "type",
+            "value": "myusername",
+            "delay": 0.1
+        },
+        {
+            "name": "Press Enter",
+            "type": "keypress",
+            "value": "enter",
+            "delay": 0.25
+        }
+    ],
+    "saved_at": "2025-10-28 14:30:00"
+}
+```
+
+## Advanced Usage
+
+### Custom Delays
+
+Adjust delay times for each step to match application response times:
+- **Fast actions**: 0.1 seconds
+- **Normal actions**: 0.25 seconds (default)
+- **Slow actions**: 0.5-1.0 seconds
+- **Page loads**: 2-5 seconds (use delay step)
+
+### Mouse Button Options
+
+Click steps support three mouse buttons:
+- **Left**: Standard clicks
+- **Right**: Context menus
+- **Middle**: Special actions
+
+### Keyboard Keys
+
+Supported key names include:
+- Letters: `a-z`
+- Numbers: `0-9`
+- Special: `enter`, `tab`, `escape`, `space`, `backspace`, `delete`
+- Modifiers: `shift`, `ctrl`, `alt`
+- Function: `f1-f12`
+- Arrows: `up`, `down`, `left`, `right`
+
+### Screen Resolution Considerations
+
+⚠️ **Important**: Mouse coordinates are absolute screen positions. Scenarios recorded on one screen resolution may not work correctly on different resolutions. For best results:
+- Use the same screen resolution when recording and executing
+- Keep display scaling at 100%
+- Record scenarios on the machine where they'll be executed
+
+## Troubleshooting
+
+### Common Issues
+
+**Problem**: Clicks are off-target
+- **Solution**: Ensure screen scaling is set to 100% and resolution matches recording environment
+
+**Problem**: Scenario executes too fast
+- **Solution**: Increase delay values for individual steps
+
+**Problem**: Application doesn't respond during execution
+- **Solution**: Move mouse to top-left corner to trigger PyAutoGUI failsafe
+
+**Problem**: Recording doesn't capture actions
+- **Solution**: Ensure the application has proper system permissions for input monitoring
+
+**Problem**: Steps fail to execute
+- **Solution**: Check that coordinate values are valid lists `[x, y]` in JSON file
+
+### Debug Tips
+
+1. Test scenarios with 1 iteration before running multiple times
+2. Add delay steps between actions for timing-sensitive operations
+3. Use descriptive step names for easier debugging
+4. Review the status bar for execution progress and errors
+
+## Best Practices
+
+### Scenario Design
+- ✅ Break complex tasks into smaller, reusable scenarios
+- ✅ Add descriptive names and documentation
+- ✅ Test with single iteration before bulk runs
+- ✅ Include adequate delays for application response times
+
+### Recording
+- ✅ Clear desktop of unnecessary windows before recording
+- ✅ Perform actions slowly and deliberately
+- ✅ Review and clean up recorded steps
+- ✅ Test recorded scenario immediately
+
+### Execution
+- ✅ Close unrelated applications to prevent interference
+- ✅ Ensure target applications are properly positioned
+- ✅ Don't interact with mouse/keyboard during execution
+- ✅ Monitor first few iterations for accuracy
+
+## System Requirements
+
+- **Operating System**: Windows 10/11, macOS 10.14+, Linux
+- **Python**: 3.8 or higher
+- **RAM**: 512MB minimum
+- **Display**: 1024x768 minimum resolution
+
+## Dependencies
+
+```
+MouseInfo==0.1.3
+PyAutoGUI==0.9.54
+PyGetWindow==0.0.9
+PyMsgBox==2.0.1
+pynput==1.8.1
+pyperclip==1.11.0
+PyRect==0.2.0
+PyScreeze==1.0.1
+PySide6==6.10.0
+PySide6_Addons==6.10.0
+PySide6_Essentials==6.10.0
+pytweening==1.2.0
+setuptools==80.9.0
+shiboken6==6.10.0
+six==1.17.0
+```
+
+## Project Structure
+
+```
+keykraken/
+├── keykraken.py          # Main application file
+├── requirements.txt      # Python dependencies
+├── README.md            # This file
+├── scenarios/           # Scenario JSON files
+│   ├── example1.json
+│   └── example2.json
+└── images/              # Optional UI assets
+    ├── icon.png
+    └── keykraken_header_v2.png
+```
 
 ## Contributing
 
-Found a bug or have an idea for a new feature? Feel free to report it!
+Contributions are welcome! Areas for improvement:
+- Additional step types (drag-and-drop, OCR-based clicking)
+- Scenario templates and marketplace
+- Variable support and conditional logic
+- Screenshot-based validation
+- Scheduled execution
+- Cloud sync for scenarios
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE.md file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues, questions, or feature requests:
+- Open an issue on GitHub
+- Check existing scenarios in the community
+- Review the troubleshooting section
+
+## Acknowledgments
+
+- Built with [PySide6](https://www.qt.io/qt-for-python) (Qt for Python)
+- Automation powered by [PyAutoGUI](https://pyautogui.readthedocs.io/)
+- Input monitoring via [pynput](https://pynput.readthedocs.io/)
 
 ---
-*README generated based on KeyKraken v1.2 features. Current Date: Friday, April 11, 2025.*
 
+**⚠️ Disclaimer**: Use KeyKraken responsibly. Automated actions should comply with the terms of service of any applications you interact with. The developers are not responsible for misuse of this tool.
